@@ -9,7 +9,7 @@ class PostListPage extends StatelessWidget {
       appBar: CustomAppBar(title: "Post List Page"),
       body: PostListBody(),
       floatingActionButton: FloatingActionButton(
-        onPressed: (){
+        onPressed: () {
           Navigator.pushNamed(context, "/write");
         },
         child: Icon(Icons.add),
@@ -17,4 +17,3 @@ class PostListPage extends StatelessWidget {
     );
   }
 }
-
