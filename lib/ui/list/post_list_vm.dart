@@ -3,7 +3,6 @@ import 'package:blog/data/post_repository.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// 1. 창고 (ViewModel)
 class PostListVM extends StateNotifier<PostListModel?> {
   final mContext = navigatorKey.currentState!.context;
 
@@ -12,53 +11,60 @@ class PostListVM extends StateNotifier<PostListModel?> {
   Future<void> notifyDelete(int id) async {
     await PostRepository().deleteById(id);
     PostListModel model = state!;
-    List<_Post> newPosts = model.posts.where((e) => e.id != id).toList();
-    state = PostListModel(newPosts);
+
+    // PostListModel의 메서드를 통해 포스트 삭제
+    state = model.removePostById(id);
+
     Navigator.pop(mContext);
   }
 
   // 트랜잭션
   Future<void> notifySave(String title, String content) async {
-    Map<String, dynamic> one = await PostRepository().save(title, content);
-    _Post newPost = _Post.fromMap(one);
+    var one = await PostRepository().save(title, content);
     PostListModel model = state!;
-    List<_Post> newPosts = [newPost, ...model.posts];
 
-    // 상태는 새로 객체를 만들어서 줘야 한다.
-    state = PostListModel(newPosts);
+    // PostListModel의 메서드를 통해 새로운 포스트 추가
+    state = model.addNewPost(one);
 
     Navigator.pop(mContext);
   }
 
   Future<void> notifyInit() async {
-    // 1. 통신을 해서 응답 받기
-    List<dynamic> list = await PostRepository().findAll();
+    var list = await PostRepository().findAll();
 
-    // 2. 파싱
-    List<_Post> posts = list.map((e) => _Post.fromMap(e)).toList();
-
-    // 3. 상태 갱신
-    state = PostListModel(posts); // 깊은 복사 (기존 데이터를 건드리지 않는다)
+    // 초기 상태 갱신
+    state = PostListModel.fromList(list);
   }
 }
 
-// 2. 창고 데이터 (State)
 class PostListModel {
-  List<_Post> posts; // 20개
+  List<({int id, String title})> posts;
 
   PostListModel(this.posts);
+
+  PostListModel.fromList(list)
+      : posts = list
+            .map((e) => (id: e["id"] as int, title: e["title"] as String))
+            .toList();
+
+  static ({int id, String title}) fromMap(map) {
+    return (id: map["id"], title: map["title"]);
+  }
+
+  // 포스트 추가 메서드
+  PostListModel addNewPost(map) {
+    var post = fromMap(map);
+    var newPosts = [post, ...posts];
+    return PostListModel(newPosts);
+  }
+
+  // 포스트 삭제 메서드
+  PostListModel removePostById(int id) {
+    var filteredPosts = posts.where((post) => post.id != id).toList();
+    return PostListModel(filteredPosts);
+  }
 }
 
-class _Post {
-  int id;
-  String title;
-
-  _Post.fromMap(map)
-      : this.id = map["id"],
-        this.title = map["title"];
-}
-
-// 3. 창고 관리자 (Provider)
 final postListProvider =
     StateNotifierProvider<PostListVM, PostListModel?>((ref) {
   return PostListVM(null)..notifyInit();
